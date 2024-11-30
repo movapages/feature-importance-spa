@@ -1,5 +1,6 @@
 import { BehaviorSubject } from 'rxjs';
 
+// Subjects for storing and sharing data
 const datasetSubject = new BehaviorSubject([]);
 const featureWeightsSubject = new BehaviorSubject([]);
 const trainingSummarySubject = new BehaviorSubject({
@@ -9,15 +10,24 @@ const trainingSummarySubject = new BehaviorSubject({
 });
 
 export const DatasetService = {
+  // Dataset methods
   setDataset: (data) => datasetSubject.next(data),
   getDataset: () => datasetSubject.value,
   dataset$: datasetSubject.asObservable(),
 
-  setFeatureWeights: (weights) => featureWeightsSubject.next(weights),
+  // Feature weights methods
+  setFeatureWeights: (weights) => {
+    featureWeightsSubject.next(weights);
+    console.log('Feature Weights Updated in Service:', weights);
+  },
   getFeatureWeights: () => featureWeightsSubject.value,
   featureWeights$: featureWeightsSubject.asObservable(),
 
-  setTrainingSummary: (summary) => trainingSummarySubject.next(summary),
+  // Training summary methods
+  setTrainingSummary: (summary) => {
+    trainingSummarySubject.next(summary);
+    console.log('Training Summary Updated in Service:', summary);
+  },
   getTrainingSummary: () => trainingSummarySubject.value,
   trainingSummary$: trainingSummarySubject.asObservable(),
 };

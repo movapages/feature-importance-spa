@@ -5,17 +5,18 @@ import Chart from 'chart.js/auto';
 const FeatureWeight = () => {
   const [weights, setWeights] = useState([]);
 
-  // Retrieve feature weights from DatasetService
   useEffect(() => {
-    const featureWeights = DatasetService.getFeatureWeights();
-    if (featureWeights && featureWeights.length > 0) {
-      setWeights(featureWeights);
-    } else {
-      console.warn('Feature weights are empty or invalid.');
-    }
+    const subscription = DatasetService.featureWeights$.subscribe((featureWeights) => {
+      console.log('Updated Feature Weights:', featureWeights); // Debug
+      if (featureWeights && featureWeights.length > 0) {
+        setWeights(featureWeights);
+      } else {
+        console.warn('Feature weights are empty or invalid.');
+      }
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
-  // Render the chart when weights are available
   useEffect(() => {
     if (weights.length > 0) {
       const ctx = document.getElementById('featureWeightChart').getContext('2d');
@@ -41,9 +42,6 @@ const FeatureWeight = () => {
                 display: true,
                 text: 'Features',
               },
-              ticks: {
-                autoSkip: false,
-              },
             },
             y: {
               title: {
@@ -63,9 +61,7 @@ const FeatureWeight = () => {
       {weights.length > 0 ? (
         <canvas id="featureWeightChart" width="400" height="200"></canvas>
       ) : (
-        <p className="text-gray-500">
-          No feature weights available. Please train the model first.
-        </p>
+        <p>No feature weights available. Please train the model first.</p>
       )}
     </div>
   );

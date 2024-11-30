@@ -1,31 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import * as tf from '@tensorflow/tfjs';
 import { DatasetService } from '../services/DatasetService';
 
 const TrainModel = () => {
   const [isTraining, setIsTraining] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [dataset, setDataset] = useState([]);
   const [message, setMessage] = useState('');
-  const [epochMetrics, setEpochMetrics] = useState([]); // Stores metrics for each epoch
-
-  useEffect(() => {
-    const subscription = DatasetService.dataset$.subscribe((data) => {
-      setDataset(data);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
 
   const preprocessData = (data) => {
     const featureKeys = Object.keys(data[0]).filter((key) => key !== 'label');
     const inputs = data.map((row) =>
-      featureKeys.map((key) => {
-        const value = parseFloat(row[key]);
-        return isNaN(value) ? 0 : value; // Replace NaN with 0
-      })
+      featureKeys.map((key) => parseFloat(row[key]) || 0)
     );
 
-    // Normalize inputs to range [0, 1]
     const maxValues = inputs[0].map((_, colIndex) =>
       Math.max(...inputs.map((row) => row[colIndex]))
     );
@@ -33,11 +20,7 @@ const TrainModel = () => {
       row.map((value, colIndex) => (maxValues[colIndex] > 0 ? value / maxValues[colIndex] : 0))
     );
 
-    const labels = data.map((row) => {
-      const label = parseFloat(row['label']);
-      return label === 1 || label === 0 ? label : 0; // Ensure binary labels
-    });
-
+    const labels = data.map((row) => parseFloat(row['label']) || 0);
     return {
       inputTensor: tf.tensor2d(normalizedInputs),
       labelTensor: tf.tensor2d(labels, [labels.length, 1]),
@@ -45,15 +28,15 @@ const TrainModel = () => {
   };
 
   const startTraining = async () => {
-    if (!Array.isArray(dataset) || dataset.length === 0) {
-      setMessage('Dataset is invalid or empty! Please upload a valid dataset.');
+    const dataset = DatasetService.getDataset();
+    if (!dataset || dataset.length === 0) {
+      setMessage('No dataset found! Please upload data first.');
       return;
     }
 
     setIsTraining(true);
     setProgress(0);
     setMessage('');
-    setEpochMetrics([]); // Reset epoch metrics
 
     try {
       const { inputTensor, labelTensor } = preprocessData(dataset);
@@ -62,31 +45,38 @@ const TrainModel = () => {
       model.add(tf.layers.dense({ units: 1, activation: 'sigmoid', inputShape: [inputTensor.shape[1]] }));
       model.compile({ optimizer: 'adam', loss: 'binaryCrossentropy', metrics: ['accuracy'] });
 
+      let trainingSummary = { epochs: 10, finalLoss: 0, finalAccuracy: 0 };
       await model.fit(inputTensor, labelTensor, {
         epochs: 10,
         callbacks: {
-          onEpochEnd: (epoch, logs) => {
-            console.log(`Epoch ${epoch + 1}: Loss = ${logs.loss}, Accuracy = ${logs.acc}`);
+          onEpochEnd: async (epoch, logs) => {
             setProgress(((epoch + 1) / 10) * 100);
-
-            // Update epoch metrics
-            setEpochMetrics((prevMetrics) => [
-              ...prevMetrics,
-              { epoch: epoch + 1, loss: logs.loss, accuracy: logs.acc || 0 },
-            ]);
+            console.log(`Epoch ${epoch + 1}: Loss = ${logs.loss}, Accuracy = ${logs.acc}`);
+            if (epoch === 9) {
+              trainingSummary.finalLoss = logs.loss;
+              trainingSummary.finalAccuracy = logs.acc;
+            }
           },
         },
       });
 
+      // Extract feature weights
+      const weights = model.getWeights();
+      const weightValues = await weights[0].array();
+      const featureNames = Object.keys(dataset[0]).filter((key) => key !== 'label');
+
+      const featureWeights = featureNames.map((name, index) => ({
+        feature: name,
+        weight: weightValues[index]?.[0] || 0,
+      }));
+
+      // Store weights and training summary
+      DatasetService.setFeatureWeights(featureWeights);
+      DatasetService.setTrainingSummary(trainingSummary);
+
       setMessage('Training Complete!');
-      DatasetService.setTrainingSummary({
-        epochs: 10,
-        finalLoss: epochMetrics[epochMetrics.length - 1]?.loss || 0,
-        finalAccuracy: epochMetrics[epochMetrics.length - 1]?.accuracy || 0,
-      });
-    } catch (error) {
-      console.error('Training Error:', error);
-      setMessage(`Training failed: ${error.message}`);
+    } catch (err) {
+      setMessage(`Training failed: ${err.message}`);
     } finally {
       setIsTraining(false);
     }
@@ -116,32 +106,6 @@ const TrainModel = () => {
           </div>
         </div>
       )}
-
-      <div className="mt-6">
-        <h3>Epoch Metrics</h3>
-        {epochMetrics.length > 0 ? (
-          <table className="min-w-full border-collapse border border-gray-300">
-            <thead>
-            <tr>
-              <th className="border border-gray-300 px-4 py-2">Epoch</th>
-              <th className="border border-gray-300 px-4 py-2">Loss</th>
-              <th className="border border-gray-300 px-4 py-2">Accuracy</th>
-            </tr>
-            </thead>
-            <tbody>
-            {epochMetrics.map((metric, index) => (
-              <tr key={index}>
-                <td className="border border-gray-300 px-4 py-2">{metric.epoch}</td>
-                <td className="border border-gray-300 px-4 py-2">{metric.loss.toFixed(4)}</td>
-                <td className="border border-gray-300 px-4 py-2">{(metric.accuracy * 100).toFixed(2)}%</td>
-              </tr>
-            ))}
-            </tbody>
-          </table>
-        ) : (
-          <p>No metrics available yet.</p>
-        )}
-      </div>
     </div>
   );
 };
