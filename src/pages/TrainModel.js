@@ -6,6 +6,7 @@ const TrainModel = () => {
   const [isTraining, setIsTraining] = useState(false);
   const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState('');
+  const [trainingLogs, setTrainingLogs] = useState([]);
 
   const preprocessData = (data) => {
     const featureKeys = Object.keys(data[0]).filter((key) => key !== 'label');
@@ -37,6 +38,7 @@ const TrainModel = () => {
     setIsTraining(true);
     setProgress(0);
     setMessage('');
+    setTrainingLogs([]); // Clear previous logs
 
     try {
       const { inputTensor, labelTensor } = preprocessData(dataset);
@@ -51,7 +53,10 @@ const TrainModel = () => {
         callbacks: {
           onEpochEnd: async (epoch, logs) => {
             setProgress(((epoch + 1) / 10) * 100);
-            console.log(`Epoch ${epoch + 1}: Loss = ${logs.loss}, Accuracy = ${logs.acc}`);
+            setTrainingLogs((prevLogs) => [
+              ...prevLogs,
+              { epoch: epoch + 1, loss: logs.loss.toFixed(4), accuracy: (logs.acc * 100).toFixed(2) },
+            ]);
             if (epoch === 9) {
               trainingSummary.finalLoss = logs.loss;
               trainingSummary.finalAccuracy = logs.acc;
@@ -104,6 +109,30 @@ const TrainModel = () => {
           <div className="w-full bg-gray-200 h-4 mt-2">
             <div className="bg-blue-500 h-4" style={{ width: `${progress}%` }}></div>
           </div>
+        </div>
+      )}
+
+      {trainingLogs.length > 0 && (
+        <div className="mt-4">
+          <h3>Training Logs</h3>
+          <table className="table-auto border-collapse border border-gray-300 w-full">
+            <thead>
+            <tr>
+              <th className="border border-gray-300 px-4 py-2">Epoch</th>
+              <th className="border border-gray-300 px-4 py-2">Loss</th>
+              <th className="border border-gray-300 px-4 py-2">Accuracy (%)</th>
+            </tr>
+            </thead>
+            <tbody>
+            {trainingLogs.map((log) => (
+              <tr key={log.epoch}>
+                <td className="border border-gray-300 px-4 py-2 text-center">{log.epoch}</td>
+                <td className="border border-gray-300 px-4 py-2 text-center">{log.loss}</td>
+                <td className="border border-gray-300 px-4 py-2 text-center">{log.accuracy}</td>
+              </tr>
+            ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
