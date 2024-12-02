@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 16px;
+}
+
+div#root {
+  width: 90%;
+  margin: 0 auto;
+}
