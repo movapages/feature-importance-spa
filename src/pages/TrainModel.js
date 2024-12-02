@@ -97,7 +97,7 @@ const TrainModel = () => {
       {!isTraining && (
         <button
           onClick={startTraining}
-          className="px-4 py-2 bg-blue-500 text-white rounded"
+          className="px-4 py-2 bg-green-600 text-white rounded"
         >
           Start Training
         </button>
@@ -107,7 +107,7 @@ const TrainModel = () => {
         <div>
           <p>Training Progress: {progress.toFixed(0)}%</p>
           <div className="w-full bg-gray-200 h-4 mt-2">
-            <div className="bg-blue-500 h-4" style={{ width: `${progress}%` }}></div>
+            <div className="bg-green-500 h-4" style={{ width: `${progress}%` }}></div>
           </div>
         </div>
       )}

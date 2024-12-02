@@ -41,9 +41,8 @@ const StartPage = () => {
   };
 
   return (
-    <div>
-      <h2>Start Page</h2>
-      <p>Upload your prepared CSV file to begin:</p>
+    <section>
+      <div className="text-bold mb-4">Upload your prepared CSV file to begin:</div>
       <input
         type="file"
         accept=".csv"
@@ -95,7 +94,7 @@ const StartPage = () => {
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 };
 
